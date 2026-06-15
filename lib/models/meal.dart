@@ -25,11 +25,11 @@ class Meal {
         id: json['id']?.toString() ?? '',
         name: json['name'] ?? '',
         description: json['description'] ?? '',
-        imageUrl: json['image_url'] ?? '',
+        imageUrl: json['imageUrl'] ?? json['image_url'] ?? '',
         tags: List<String>.from(json['tags'] ?? []),
         calories: json['calories'] ?? 0,
         rating: (json['rating'] ?? 0).toDouble(),
         cuisine: json['cuisine'] ?? '',
-        prepTime: json['prep_time'] ?? 0,
+        prepTime: json['prepTime'] ?? json['prep_time'] ?? 0,
       );
 }
