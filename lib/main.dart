@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'providers/app_state.dart';
 import 'theme/app_theme.dart';
+import 'screens/welcome_screen.dart';
+import 'screens/auth/login_screen.dart';
 import 'screens/main_nav_screen.dart';
 
 void main() {
@@ -34,7 +36,29 @@ class MixedPlateApp extends StatelessWidget {
       title: 'Mixed Plate',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
-      home: const MainNavScreen(),
+      home: const _AppRouter(),
     );
+  }
+}
+
+class _AppRouter extends StatelessWidget {
+  const _AppRouter();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+
+    if (!state.isInitialized) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+    }
+
+    if (!state.seenWelcome) return const WelcomeScreen();
+    if (!state.isAuthenticated) return const LoginScreen();
+    return const MainNavScreen();
   }
 }

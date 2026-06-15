@@ -16,219 +16,188 @@ class MatchesScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
+          // ── Title ──────────────────────────────────────────────────────────
           SliverAppBar.large(
             backgroundColor: AppColors.background,
             automaticallyImplyLeading: false,
             title: Text(
-              'Matches',
+              'Your Matches',
               style: GoogleFonts.playfairDisplay(
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
               ),
             ),
-            actions: [
-              if (state.matches.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(right: 20),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(100),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.favorite_rounded,
-                            color: AppColors.secondary, size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${state.matches.length}',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.secondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
           ),
+
+          // ── Subtitle ───────────────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+              child: Text(
+                state.matches.isEmpty
+                    ? 'Meals you both liked will appear here.'
+                    : 'You both said yes to these. Tap a meal for details.',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  color: AppColors.textSecondary,
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ),
+
+          // ── Content ────────────────────────────────────────────────────────
           if (state.matches.isEmpty)
             SliverFillRemaining(
-              child: _empty(state.hasHousehold),
+              hasScrollBody: false,
+              child: _EmptyState(hasHousehold: state.hasHousehold),
             )
           else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.68,
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (ctx, i) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _MatchRow(meal: state.matches[i]),
+                    if (i < state.matches.length - 1)
+                      const Divider(
+                          height: 1, indent: 116, endIndent: 24),
+                  ],
                 ),
-                delegate: SliverChildBuilderDelegate(
-                  (ctx, i) => _MatchCard(meal: state.matches[i]),
-                  childCount: state.matches.length,
-                ),
+                childCount: state.matches.length,
               ),
             ),
-        ],
-      ),
-    );
-  }
 
-  Widget _empty(bool hasHousehold) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('🍽️', style: TextStyle(fontSize: 64)),
-            const SizedBox(height: 24),
-            Text(
-              hasHousehold ? 'No matches yet' : 'Join a household first',
-              style: GoogleFonts.playfairDisplay(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              hasHousehold
-                  ? 'Swipe right on meals you like. Matches appear when everyone in your household agrees.'
-                  : 'Create or join a household to discover meals together.',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                height: 1.6,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
+        ],
       ),
     );
   }
 }
 
-class _MatchCard extends StatelessWidget {
-  final Meal meal;
+// ── Match row (image left, text right) ────────────────────────────────────────
 
-  const _MatchCard({required this.meal});
+class _MatchRow extends StatelessWidget {
+  final Meal meal;
+  const _MatchRow({required this.meal});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: () => _showDetail(context),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+      splashColor: AppColors.primary.withOpacity(0.05),
+      highlightColor: AppColors.primary.withOpacity(0.03),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // ── Thumbnail ────────────────────────────────────────────────────
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: SizedBox(
+                width: 92,
+                height: 92,
+                child: meal.imageUrl.isEmpty
+                    ? _placeholder()
+                    : Image.network(
+                        meal.imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _placeholder(),
+                      ),
+              ),
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              _image(),
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: const [0.45, 1.0],
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.82),
+            const SizedBox(width: 16),
+
+            // ── Info ─────────────────────────────────────────────────────────
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    meal.name,
+                    style: GoogleFonts.inter(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  // Cuisine prominently in coral
+                  Text(
+                    meal.cuisine,
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.secondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Tags row (first 2 tags) + stats
+                  if (meal.tags.isNotEmpty)
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: meal.tags.take(2).map((t) => _tag(t)).toList(),
+                    ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      _chip(Icons.timer_outlined, '${meal.prepTime} min'),
+                      const SizedBox(width: 16),
+                      _chip(Icons.star_rounded,
+                          meal.rating.toStringAsFixed(1)),
                     ],
                   ),
-                ),
+                ],
               ),
-              Positioned(
-                left: 12,
-                right: 12,
-                bottom: 12,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      meal.name,
-                      style: GoogleFonts.playfairDisplay(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        height: 1.2,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.star_rounded,
-                            color: AppColors.gold, size: 12),
-                        const SizedBox(width: 2),
-                        Text(
-                          meal.rating.toStringAsFixed(1),
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: Colors.white.withOpacity(0.88),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${meal.prepTime}m',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: Colors.white.withOpacity(0.65),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Positioned(
-                top: 10,
-                right: 10,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(
-                    color: AppColors.secondary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.favorite_rounded,
-                      color: Colors.white, size: 12),
-                ),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+
+            // ── Chevron ───────────────────────────────────────────────────────
+            Icon(Icons.chevron_right_rounded,
+                color: Colors.grey.shade400, size: 24),
+          ],
         ),
       ),
     );
   }
 
-  Widget _image() {
-    if (meal.imageUrl.isEmpty) return _placeholder();
-    return Image.network(
-      meal.imageUrl,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => _placeholder(),
+  Widget _tag(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primary,
+        ),
+      ),
+    );
+  }
+
+  Widget _chip(IconData icon, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: AppColors.textSecondary),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
     );
   }
 
@@ -250,7 +219,7 @@ class _MatchCard extends StatelessWidget {
       child: Center(
         child: Text(
           meal.name.isNotEmpty ? meal.name[0] : '🍽',
-          style: const TextStyle(fontSize: 36, color: Colors.white),
+          style: const TextStyle(fontSize: 32, color: Colors.white),
         ),
       ),
     );
@@ -293,7 +262,7 @@ class _MatchCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       child: Image.network(
                         meal.imageUrl,
-                        height: 200,
+                        height: 220,
                         width: double.infinity,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Container(
@@ -311,34 +280,41 @@ class _MatchCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
+                        meal.cuisine,
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.secondary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
                         meal.name,
                         style: GoogleFonts.playfairDisplay(
-                          fontSize: 28,
+                          fontSize: 30,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Text(
                         meal.description,
                         style: GoogleFonts.inter(
-                          fontSize: 15,
+                          fontSize: 17,
                           color: AppColors.textSecondary,
                           height: 1.6,
                         ),
                       ),
                       const SizedBox(height: 20),
                       Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                        spacing: 10,
+                        runSpacing: 10,
                         children: [
-                          _detailChip(
-                              Icons.local_fire_department_rounded,
-                              '${meal.calories} cal',
-                              AppColors.secondary),
-                          _detailChip(Icons.timer_outlined,
+                          _detailPill(Icons.timer_outlined,
                               '${meal.prepTime} min', AppColors.primary),
-                          _detailChip(Icons.star_rounded,
+                          _detailPill(Icons.local_fire_department_outlined,
+                              '${meal.calories} cal', AppColors.secondary),
+                          _detailPill(Icons.star_rounded,
                               meal.rating.toStringAsFixed(1), AppColors.gold),
                         ],
                       ),
@@ -350,7 +326,7 @@ class _MatchCard extends StatelessWidget {
                             .map(
                               (t) => Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 6),
+                                    horizontal: 14, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: AppColors.primary.withOpacity(0.08),
                                   borderRadius: BorderRadius.circular(100),
@@ -358,7 +334,7 @@ class _MatchCard extends StatelessWidget {
                                 child: Text(
                                   t,
                                   style: GoogleFonts.inter(
-                                    fontSize: 13,
+                                    fontSize: 15,
                                     fontWeight: FontWeight.w500,
                                     color: AppColors.primary,
                                   ),
@@ -379,9 +355,9 @@ class _MatchCard extends StatelessWidget {
     );
   }
 
-  Widget _detailChip(IconData icon, String label, Color color) {
+  Widget _detailPill(IconData icon, String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(100),
@@ -389,14 +365,57 @@ class _MatchCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 14),
+          Icon(icon, color: color, size: 16),
           const SizedBox(width: 6),
           Text(
             label,
             style: GoogleFonts.inter(
-                fontSize: 13, fontWeight: FontWeight.w600, color: color),
+                fontSize: 15, fontWeight: FontWeight.w600, color: color),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+
+class _EmptyState extends StatelessWidget {
+  final bool hasHousehold;
+  const _EmptyState({required this.hasHousehold});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('🍽️', style: TextStyle(fontSize: 64)),
+            const SizedBox(height: 24),
+            Text(
+              hasHousehold ? 'No matches yet' : 'Pair up first',
+              style: GoogleFonts.playfairDisplay(
+                fontSize: 30,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              hasHousehold
+                  ? 'Go to the Swipe tab and say Yes to meals you like. When you both like the same meal it appears here.'
+                  : 'Go to the Household tab, enter both names, then start swiping.',
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                color: AppColors.textSecondary,
+                height: 1.6,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

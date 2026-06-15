@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/meal.dart';
 
@@ -6,12 +7,75 @@ class ApiService {
   static const _base = 'http://localhost:3001';
   static const _timeout = Duration(seconds: 5);
 
+  String? _token;
+
+  void setToken(String? token) => _token = token;
+
+  Map<String, String> get _headers => {
+        'Content-Type': 'application/json',
+        if (_token != null) 'Authorization': 'Bearer $_token',
+      };
+
+  // ── Auth (no offline fallback — server must be running) ───────────────────
+
+  Future<Map<String, dynamic>> signup(String email, String password) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse('$_base/auth/signup'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email, 'password': password}),
+          )
+          .timeout(_timeout);
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      }
+      final err = jsonDecode(res.body) as Map<String, dynamic>;
+      throw Exception(err['detail'] ?? 'Signup failed');
+    } on SocketException {
+      throw Exception('Cannot reach server. Make sure the backend is running on port 3001.');
+    } on http.ClientException {
+      throw Exception('Cannot reach server. Make sure the backend is running on port 3001.');
+    }
+  }
+
+  Future<Map<String, dynamic>> login(String email, String password) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse('$_base/auth/login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email, 'password': password}),
+          )
+          .timeout(_timeout);
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      }
+      final err = jsonDecode(res.body) as Map<String, dynamic>;
+      throw Exception(err['detail'] ?? 'Login failed');
+    } on SocketException {
+      throw Exception('Cannot reach server. Make sure the backend is running on port 3001.');
+    } on http.ClientException {
+      throw Exception('Cannot reach server. Make sure the backend is running on port 3001.');
+    }
+  }
+
+  Future<void> serverLogout() async {
+    try {
+      await http
+          .post(Uri.parse('$_base/auth/logout'), headers: _headers)
+          .timeout(_timeout);
+    } catch (_) {}
+  }
+
+  // ── Households ─────────────────────────────────────────────────────────────
+
   Future<Map<String, dynamic>> createHousehold(String name) async {
     try {
       final res = await http
           .post(
             Uri.parse('$_base/households'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _headers,
             body: jsonEncode({'name': name}),
           )
           .timeout(_timeout);
@@ -31,25 +95,42 @@ class ApiService {
       final res = await http
           .post(
             Uri.parse('$_base/households/join'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'code': code}),
+            headers: _headers,
+            body: jsonEncode({'invite_code': code.toUpperCase().trim()}),
           )
           .timeout(_timeout);
       if (res.statusCode == 200) {
         return jsonDecode(res.body) as Map<String, dynamic>;
       }
-    } catch (_) {}
-    return {
-      'id': 'local-joined-${DateTime.now().millisecondsSinceEpoch}',
-      'code': code,
-      'name': 'Our Household',
-    };
+      // API error (bad code etc) — propagate to caller
+      final err = jsonDecode(res.body) as Map<String, dynamic>;
+      throw Exception(err['detail'] ?? 'Failed to join household');
+    } on SocketException {
+      // Offline fallback
+      return {
+        'id': 'local-joined-${DateTime.now().millisecondsSinceEpoch}',
+        'code': code,
+        'name': 'Our Household',
+      };
+    } on http.ClientException {
+      return {
+        'id': 'local-joined-${DateTime.now().millisecondsSinceEpoch}',
+        'code': code,
+        'name': 'Our Household',
+      };
+    }
+    // Exception from status check re-throws
   }
+
+  // ── Meals ──────────────────────────────────────────────────────────────────
 
   Future<List<Meal>> getMeals(String householdId) async {
     try {
       final res = await http
-          .get(Uri.parse('$_base/meals?household_id=$householdId'))
+          .get(
+            Uri.parse('$_base/meals?household_id=$householdId'),
+            headers: _headers,
+          )
           .timeout(_timeout);
       if (res.statusCode == 200) {
         final list = jsonDecode(res.body) as List;
@@ -64,7 +145,7 @@ class ApiService {
       await http
           .post(
             Uri.parse('$_base/swipes'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _headers,
             body: jsonEncode({
               'household_id': householdId,
               'meal_id': mealId,
@@ -78,7 +159,10 @@ class ApiService {
   Future<List<Meal>> getMatches(String householdId) async {
     try {
       final res = await http
-          .get(Uri.parse('$_base/matches?household_id=$householdId'))
+          .get(
+            Uri.parse('$_base/matches?household_id=$householdId'),
+            headers: _headers,
+          )
           .timeout(_timeout);
       if (res.statusCode == 200) {
         final list = jsonDecode(res.body) as List;
@@ -94,12 +178,14 @@ class ApiService {
       await http
           .put(
             Uri.parse('$_base/households/$householdId/preferences'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _headers,
             body: jsonEncode(prefs),
           )
           .timeout(_timeout);
     } catch (_) {}
   }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   String _randomCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

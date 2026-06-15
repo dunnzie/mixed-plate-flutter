@@ -12,149 +12,26 @@ class SwipeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
 
-    if (!state.hasHousehold) {
-      return _empty(
-        'Join a Household First',
-        'Create or join a household on the Household tab to start swiping.',
-        Icons.people_outline_rounded,
-      );
-    }
-
+    if (!state.hasHousehold) return _gate();
     if (state.meals.isEmpty) {
       return const Scaffold(
         backgroundColor: AppColors.background,
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
+    if (state.swipingDone) return _done(context, state);
 
-    if (state.swipingDone) return _doneState(context, state);
-
-    return _swipeUI(context, state);
-  }
-
-  Widget _swipeUI(BuildContext context, AppState state) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _header(state),
-            _progressBar(state),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    if (state.currentMealIndex + 2 < state.meals.length)
-                      _BackCard(
-                          meal: state.meals[state.currentMealIndex + 2],
-                          scale: 0.88,
-                          yOffset: -22),
-                    if (state.currentMealIndex + 1 < state.meals.length)
-                      _BackCard(
-                          meal: state.meals[state.currentMealIndex + 1],
-                          scale: 0.94,
-                          yOffset: -11),
-                    _DraggableMealCard(
-                      key: ValueKey(state.currentMealIndex),
-                      meal: state.meals[state.currentMealIndex],
-                      onLike: () => state.swipe(true),
-                      onDislike: () => state.swipe(false),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            _actionRow(state),
-          ],
-        ),
-      ),
+    return _MealView(
+      key: ValueKey(state.currentMealIndex),
+      meal: state.meals[state.currentMealIndex],
+      index: state.currentMealIndex,
+      total: state.meals.length,
+      onYes: () => state.swipe(true),
+      onNo: () => state.swipe(false),
     );
   }
 
-  Widget _header(AppState state) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-      child: Row(
-        children: [
-          Text(
-            'Discover',
-            style: GoogleFonts.playfairDisplay(
-              fontSize: 30,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(100),
-            ),
-            child: Text(
-              '${state.currentMealIndex + 1} / ${state.meals.length}',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _progressBar(AppState state) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(100),
-        child: LinearProgressIndicator(
-          value: state.currentMealIndex / state.meals.length,
-          backgroundColor: Colors.grey.shade200,
-          color: AppColors.primary,
-          minHeight: 4,
-        ),
-      ),
-    );
-  }
-
-  Widget _actionRow(AppState state) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _ActionBtn(
-            onTap: () => state.swipe(false),
-            icon: Icons.close_rounded,
-            color: AppColors.dislike,
-            size: 56,
-          ),
-          const SizedBox(width: 28),
-          _ActionBtn(
-            onTap: () => state.swipe(true),
-            icon: Icons.favorite_rounded,
-            color: AppColors.like,
-            size: 68,
-            filled: true,
-          ),
-          const SizedBox(width: 28),
-          _ActionBtn(
-            onTap: () => state.swipe(false),
-            icon: Icons.skip_next_rounded,
-            color: AppColors.gold,
-            size: 56,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _doneState(BuildContext context, AppState state) {
+  Widget _gate() {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Center(
@@ -164,81 +41,31 @@ class SwipeScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 96,
-                height: 96,
-                decoration: const BoxDecoration(
-                  color: Color(0x1A4CAF78),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.check_circle_rounded,
-                    color: AppColors.like, size: 52),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'All Done!',
-                style: GoogleFonts.playfairDisplay(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "You've rated all meals. Check the Matches tab to see what your household agrees on.",
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  color: AppColors.textSecondary,
-                  height: 1.6,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 36),
-              ElevatedButton(
-                onPressed: () => state.loadMeals(),
-                child: const Text('Start Over'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _empty(String title, String body, IconData icon) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
+                width: 88,
+                height: 88,
                 decoration: BoxDecoration(
                   color: AppColors.primary.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: AppColors.primary, size: 40),
+                child: const Icon(Icons.people_outline_rounded,
+                    color: AppColors.primary, size: 44),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
               Text(
-                title,
+                'Pair up first',
                 style: GoogleFonts.playfairDisplay(
-                  fontSize: 24,
+                  fontSize: 32,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                 ),
-                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Text(
-                body,
+                'Go to the Household tab, enter both names, then come back here to start swiping.',
                 style: GoogleFonts.inter(
-                  fontSize: 14,
+                  fontSize: 18,
                   color: AppColors.textSecondary,
-                  height: 1.6,
+                  height: 1.55,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -248,264 +75,310 @@ class SwipeScreen extends StatelessWidget {
       ),
     );
   }
-}
 
-// ── Back cards (peeking behind) ───────────────────────────────────────────────
-
-class _BackCard extends StatelessWidget {
-  final Meal meal;
-  final double scale;
-  final double yOffset;
-
-  const _BackCard(
-      {required this.meal, required this.scale, required this.yOffset});
-
-  @override
-  Widget build(BuildContext context) {
-    return Transform.translate(
-      offset: Offset(0, yOffset),
-      child: Transform.scale(
-        scale: scale,
-        child: MealCard(meal: meal),
+  Widget _done(BuildContext context, AppState state) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 104,
+                height: 104,
+                decoration: BoxDecoration(
+                  color: AppColors.like.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle_rounded,
+                    color: AppColors.like, size: 56),
+              ),
+              const SizedBox(height: 28),
+              Text(
+                'All Done!',
+                style: GoogleFonts.playfairDisplay(
+                  fontSize: 38,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "You've rated all the meals. Check Matches to see what you both agreed on.",
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  color: AppColors.textSecondary,
+                  height: 1.6,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => state.loadMeals(),
+                  child: const Text('Start Over'),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-// ── Draggable top card ────────────────────────────────────────────────────────
+// ── Full-screen meal view with swipe animation ────────────────────────────────
 
-class _DraggableMealCard extends StatefulWidget {
+class _MealView extends StatefulWidget {
   final Meal meal;
-  final VoidCallback onLike;
-  final VoidCallback onDislike;
+  final int index;
+  final int total;
+  final VoidCallback onYes;
+  final VoidCallback onNo;
 
-  const _DraggableMealCard({
+  const _MealView({
     super.key,
     required this.meal,
-    required this.onLike,
-    required this.onDislike,
+    required this.index,
+    required this.total,
+    required this.onYes,
+    required this.onNo,
   });
 
   @override
-  State<_DraggableMealCard> createState() => _DraggableMealCardState();
+  State<_MealView> createState() => _MealViewState();
 }
 
-class _DraggableMealCardState extends State<_DraggableMealCard>
+class _MealViewState extends State<_MealView>
     with SingleTickerProviderStateMixin {
-  Offset _pos = Offset.zero;
-  late AnimationController _ctrl;
+  Offset _drag = Offset.zero;
+  late final AnimationController _animCtrl;
   Animation<Offset>? _anim;
+  bool? _pendingLiked;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this)
-      ..addListener(() {
-        if (_anim != null && mounted) setState(() => _pos = _anim!.value);
-      });
+    _animCtrl = AnimationController(vsync: this)
+      ..addListener(_onTick)
+      ..addStatusListener(_onStatus);
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _animCtrl
+      ..removeListener(_onTick)
+      ..removeStatusListener(_onStatus)
+      ..dispose();
     super.dispose();
   }
 
-  double get _rotation => _pos.dx * 0.0007;
-  double get _likeOpacity => (_pos.dx / 130).clamp(0.0, 1.0);
-  double get _nopeOpacity => (-_pos.dx / 130).clamp(0.0, 1.0);
+  void _onTick() {
+    if (_anim != null && mounted) setState(() => _drag = _anim!.value);
+  }
 
-  void _onPanStart(DragStartDetails _) => _ctrl.stop();
+  void _onStatus(AnimationStatus s) {
+    if (s == AnimationStatus.completed && _pendingLiked != null) {
+      final liked = _pendingLiked!;
+      _pendingLiked = null;
+      if (mounted) liked ? widget.onYes() : widget.onNo();
+    }
+  }
 
-  void _onPanUpdate(DragUpdateDetails d) =>
-      setState(() => _pos += d.delta);
+  void _onPanUpdate(DragUpdateDetails d) {
+    if (_animCtrl.isAnimating) return;
+    setState(() => _drag += Offset(d.delta.dx, d.delta.dy * 0.25));
+  }
 
   void _onPanEnd(DragEndDetails _) {
-    final sw = MediaQuery.of(context).size.width;
-    if (_pos.dx > sw * 0.33) {
-      _fly(true);
-    } else if (_pos.dx < -sw * 0.33) {
-      _fly(false);
+    if (_animCtrl.isAnimating) return;
+    final sw = MediaQuery.sizeOf(context).width;
+    if (_drag.dx.abs() > sw * 0.33) {
+      _flyOut(_drag.dx > 0);
     } else {
       _snapBack();
     }
   }
 
-  void _fly(bool liked) {
-    final sw = MediaQuery.of(context).size.width;
-    _ctrl.duration = const Duration(milliseconds: 280);
-    _anim = Tween<Offset>(
-      begin: _pos,
-      end: Offset(liked ? sw * 1.6 : -sw * 1.6, _pos.dy - 80),
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
-    _ctrl.forward(from: 0).then((_) {
-      if (liked) {
-        widget.onLike();
-      } else {
-        widget.onDislike();
-      }
-    });
+  void _tapBtn(bool liked) => _flyOut(liked);
+
+  void _flyOut(bool liked) {
+    final sw = MediaQuery.sizeOf(context).width;
+    final end = Offset(liked ? sw * 1.7 : -sw * 1.7, _drag.dy - 50);
+    _pendingLiked = liked;
+    _animCtrl.duration = const Duration(milliseconds: 300);
+    _anim = Tween<Offset>(begin: _drag, end: end)
+        .animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeIn));
+    _animCtrl.forward(from: 0);
   }
 
   void _snapBack() {
-    _ctrl.duration = const Duration(milliseconds: 500);
-    _anim = Tween<Offset>(begin: _pos, end: Offset.zero).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut),
-    );
-    _ctrl.forward(from: 0);
+    _pendingLiked = null;
+    _animCtrl.duration = const Duration(milliseconds: 420);
+    _anim = Tween<Offset>(begin: _drag, end: Offset.zero)
+        .animate(CurvedAnimation(parent: _animCtrl, curve: Curves.elasticOut));
+    _animCtrl.forward(from: 0);
   }
+
+  double get _rotation => (_drag.dx / 20) * 0.05;
+  double get _likeOpacity => (_drag.dx / 90).clamp(0.0, 1.0);
+  double get _nopeOpacity => (-_drag.dx / 90).clamp(0.0, 1.0);
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onPanStart: _onPanStart,
-      onPanUpdate: _onPanUpdate,
-      onPanEnd: _onPanEnd,
-      child: Transform.translate(
-        offset: _pos,
-        child: Transform.rotate(
-          angle: _rotation,
-          child: Stack(
-            children: [
-              MealCard(meal: widget.meal),
-              Positioned(
-                top: 36,
-                left: 20,
-                child: Opacity(
-                  opacity: _likeOpacity,
-                  child: const _SwipeBadge(label: 'LIKE', color: AppColors.like, tilt: -0.25),
+    final size = MediaQuery.sizeOf(context);
+    final topPad = MediaQuery.paddingOf(context).top;
+    final bottomPad = MediaQuery.paddingOf(context).bottom;
+    final imageH = size.height * 0.60;
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Column(
+        children: [
+          // ── Swipeable card area ─────────────────────────────────────────────
+          Expanded(
+            child: ClipRect(
+              child: GestureDetector(
+                onPanUpdate: _onPanUpdate,
+                onPanEnd: _onPanEnd,
+                child: Transform(
+                  alignment: Alignment.bottomCenter,
+                  transform: Matrix4.identity()
+                    ..translate(_drag.dx, _drag.dy)
+                    ..rotateZ(_rotation),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Hero image with overlays ──────────────────────────
+                      SizedBox(
+                        height: imageH,
+                        width: double.infinity,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            _HeroImage(meal: widget.meal, height: imageH),
+                            // Counter at top center
+                            Positioned(
+                              top: topPad + 14,
+                              left: 0,
+                              right: 0,
+                              child: Center(
+                                child: _CounterPill(
+                                  current: widget.index + 1,
+                                  total: widget.total,
+                                ),
+                              ),
+                            ),
+                            // YES badge (right swipe)
+                            Positioned(
+                              top: topPad + 56,
+                              left: 20,
+                              child: Opacity(
+                                opacity: _likeOpacity,
+                                child: const _SwipeBadge(
+                                  label: 'YES',
+                                  color: AppColors.like,
+                                ),
+                              ),
+                            ),
+                            // NOPE badge (left swipe)
+                            Positioned(
+                              top: topPad + 56,
+                              right: 20,
+                              child: Opacity(
+                                opacity: _nopeOpacity,
+                                child: const _SwipeBadge(
+                                  label: 'NOPE',
+                                  color: AppColors.dislike,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // ── Meal info ─────────────────────────────────────────
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _CuisineBadge(label: widget.meal.cuisine),
+                              const SizedBox(height: 10),
+                              Text(
+                                widget.meal.name,
+                                style: GoogleFonts.playfairDisplay(
+                                  fontSize: 34,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                  height: 1.1,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  _MetaItem(Icons.timer_outlined,
+                                      '${widget.meal.prepTime} min'),
+                                  const SizedBox(width: 20),
+                                  _MetaItem(
+                                      Icons.local_fire_department_outlined,
+                                      '${widget.meal.calories} cal'),
+                                  const SizedBox(width: 20),
+                                  _MetaItem(Icons.star_rounded,
+                                      widget.meal.rating.toStringAsFixed(1)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              Positioned(
-                top: 36,
-                right: 20,
-                child: Opacity(
-                  opacity: _nopeOpacity,
-                  child: const _SwipeBadge(label: 'NOPE', color: AppColors.dislike, tilt: 0.25),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SwipeBadge extends StatelessWidget {
-  final String label;
-  final Color color;
-  final double tilt;
-
-  const _SwipeBadge(
-      {required this.label, required this.color, required this.tilt});
-
-  @override
-  Widget build(BuildContext context) {
-    return Transform.rotate(
-      angle: tilt,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color, width: 3),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: color,
-            letterSpacing: 2,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionBtn extends StatelessWidget {
-  final VoidCallback onTap;
-  final IconData icon;
-  final Color color;
-  final double size;
-  final bool filled;
-
-  const _ActionBtn({
-    required this.onTap,
-    required this.icon,
-    required this.color,
-    required this.size,
-    this.filled = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: filled ? color : Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(filled ? 0.4 : 0.18),
-              blurRadius: filled ? 24 : 12,
-              offset: const Offset(0, 6),
             ),
-          ],
-        ),
-        child: Icon(icon, color: filled ? Colors.white : color, size: size * 0.44),
-      ),
-    );
-  }
-}
-
-// ── Meal card (shared) ────────────────────────────────────────────────────────
-
-class MealCard extends StatelessWidget {
-  final Meal meal;
-
-  const MealCard({super.key, required this.meal});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.16),
-            blurRadius: 32,
-            offset: const Offset(0, 12),
           ),
+
+          // ── YES / NO buttons — full width, no padding ─────────────────────
+          _YesNoBar(
+            onYes: () => _tapBtn(true),
+            onNo: () => _tapBtn(false),
+          ),
+          SizedBox(height: bottomPad > 0 ? bottomPad : 0),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            _image(),
-            _gradient(),
-            _info(),
-          ],
-        ),
-      ),
     );
   }
+}
 
-  Widget _image() {
-    if (meal.imageUrl.isEmpty) return _placeholder();
-    return Image.network(
-      meal.imageUrl,
-      fit: BoxFit.cover,
-      loadingBuilder: (_, child, progress) =>
-          progress == null ? child : _placeholder(),
-      errorBuilder: (_, __, ___) => _placeholder(),
+// ── Hero image ────────────────────────────────────────────────────────────────
+
+class _HeroImage extends StatelessWidget {
+  final Meal meal;
+  final double height;
+
+  const _HeroImage({required this.meal, required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: meal.imageUrl.isEmpty
+          ? _placeholder()
+          : Image.network(
+              meal.imageUrl,
+              fit: BoxFit.cover,
+              loadingBuilder: (_, child, progress) =>
+                  progress == null ? child : _placeholder(),
+              errorBuilder: (_, __, ___) => _placeholder(),
+            ),
     );
   }
 
@@ -528,137 +401,200 @@ class MealCard extends StatelessWidget {
       child: Center(
         child: Text(
           meal.name.isNotEmpty ? meal.name[0] : '🍽',
-          style: const TextStyle(fontSize: 80, color: Colors.white),
+          style: const TextStyle(fontSize: 96, color: Colors.white),
         ),
       ),
     );
   }
+}
 
-  Widget _gradient() {
+// ── Swipe badge (YES / NOPE overlay) ─────────────────────────────────────────
+
+class _SwipeBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _SwipeBadge({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          stops: const [0.4, 1.0],
-          colors: [Colors.transparent, Colors.black.withOpacity(0.88)],
-        ),
-      ),
-    );
-  }
-
-  Widget _info() {
-    return Positioned(
-      left: 24,
-      right: 24,
-      bottom: 28,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              _chip(meal.cuisine, AppColors.secondary),
-              const SizedBox(width: 8),
-              const Icon(Icons.star_rounded, color: AppColors.gold, size: 15),
-              const SizedBox(width: 3),
-              Text(
-                meal.rating.toStringAsFixed(1),
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            meal.name,
-            style: GoogleFonts.playfairDisplay(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-              height: 1.15,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            meal.description,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: Colors.white.withOpacity(0.78),
-              height: 1.45,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              _infoChip(Icons.local_fire_department_rounded, '${meal.calories} cal'),
-              const SizedBox(width: 8),
-              _infoChip(Icons.timer_outlined, '${meal.prepTime}m'),
-              const Spacer(),
-              ...meal.tags.take(2).map(
-                    (t) => Padding(
-                      padding: const EdgeInsets.only(left: 6),
-                      child: _outline(t),
-                    ),
-                  ),
-            ],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontSize: 26,
+          fontWeight: FontWeight.w900,
+          color: color,
+          letterSpacing: 1.5,
+        ),
+      ),
     );
   }
+}
 
-  Widget _chip(String label, Color color) {
+// ── Counter pill ──────────────────────────────────────────────────────────────
+
+class _CounterPill extends StatelessWidget {
+  final int current;
+  final int total;
+
+  const _CounterPill({required this.current, required this.total});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
-        color: color,
+        color: Colors.black.withOpacity(0.52),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Text(
+        '$current of $total meals',
+        style: GoogleFonts.inter(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Cuisine badge ─────────────────────────────────────────────────────────────
+
+class _CuisineBadge extends StatelessWidget {
+  final String label;
+  const _CuisineBadge({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.secondary.withOpacity(0.12),
         borderRadius: BorderRadius.circular(100),
       ),
       child: Text(
         label,
         style: GoogleFonts.inter(
-            fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: AppColors.secondary,
+          letterSpacing: 0.3,
+        ),
       ),
     );
   }
+}
 
-  Widget _infoChip(IconData icon, String label) {
+// ── Meta item ─────────────────────────────────────────────────────────────────
+
+class _MetaItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _MetaItem(this.icon, this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: AppColors.textSecondary),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: GoogleFonts.inter(fontSize: 16, color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
+}
+
+// ── YES / NO bar — edge-to-edge ───────────────────────────────────────────────
+
+class _YesNoBar extends StatelessWidget {
+  final VoidCallback onYes;
+  final VoidCallback onNo;
+  const _YesNoBar({required this.onYes, required this.onNo});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.18),
-        borderRadius: BorderRadius.circular(100),
+        border: Border(top: BorderSide(color: Colors.grey.shade100, width: 1)),
       ),
+      height: 82,
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white, size: 12),
-          const SizedBox(width: 4),
-          Text(label,
-              style: GoogleFonts.inter(
-                  fontSize: 11,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500)),
+          // NO — left half
+          Expanded(
+            child: GestureDetector(
+              onTap: onNo,
+              child: Container(
+                color: AppColors.dislikeLight,
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.close_rounded,
+                        color: AppColors.dislike, size: 32),
+                    const SizedBox(width: 10),
+                    Text(
+                      'No',
+                      style: GoogleFonts.inter(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.dislike,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Divider
+          Container(width: 1, color: Colors.grey.shade200),
+          // YES — right half
+          Expanded(
+            child: GestureDetector(
+              onTap: onYes,
+              child: Container(
+                color: AppColors.like,
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.favorite_rounded,
+                        color: Colors.white, size: 32),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Yes',
+                      style: GoogleFonts.inter(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
-    );
-  }
-
-  Widget _outline(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: Colors.white.withOpacity(0.4)),
-      ),
-      child: Text(label,
-          style: GoogleFonts.inter(fontSize: 11, color: Colors.white)),
     );
   }
 }
