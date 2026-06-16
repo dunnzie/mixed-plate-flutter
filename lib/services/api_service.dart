@@ -18,13 +18,15 @@ class ApiService {
 
   // ── Auth (no offline fallback — server must be running) ───────────────────
 
-  Future<Map<String, dynamic>> signup(String email, String password) async {
+  Future<Map<String, dynamic>> signup(
+      String name, String email, String password) async {
     try {
       final res = await http
           .post(
             Uri.parse('$_base/auth/signup'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'email': email, 'password': password}),
+            body: jsonEncode(
+                {'name': name, 'email': email, 'password': password}),
           )
           .timeout(_timeout);
       if (res.statusCode == 200 || res.statusCode == 201) {

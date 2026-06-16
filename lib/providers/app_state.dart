@@ -18,6 +18,7 @@ class AppState extends ChangeNotifier {
   String? userId;
   String? accessToken;
   String? userEmail;
+  String? userName;
   bool get isAuthenticated => accessToken != null;
 
   // ── Household ──────────────────────────────────────────────────────────────
@@ -65,11 +66,13 @@ class AppState extends ChangeNotifier {
     final token = await _storage.read(key: 'access_token');
     final uid = await _storage.read(key: 'user_id');
     final email = await _storage.read(key: 'user_email');
+    final name = await _storage.read(key: 'user_name');
 
     if (token != null && uid != null) {
       accessToken = token;
       userId = uid;
       userEmail = email;
+      userName = name;
       _api.setToken(token);
 
       // Restore household
@@ -95,12 +98,12 @@ class AppState extends ChangeNotifier {
 
   // ── Auth methods ───────────────────────────────────────────────────────────
 
-  Future<void> signup(String email, String password) async {
+  Future<void> signup(String name, String email, String password) async {
     isLoading = true;
     error = null;
     notifyListeners();
     try {
-      final data = await _api.signup(email, password);
+      final data = await _api.signup(name, email, password);
       await _applyAuth(data);
     } catch (e) {
       error = e.toString().replaceFirst('Exception: ', '');
@@ -136,6 +139,7 @@ class AppState extends ChangeNotifier {
     accessToken = null;
     userId = null;
     userEmail = null;
+    userName = null;
     householdId = null;
     householdCode = null;
     householdName = null;
@@ -148,16 +152,23 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _applyAuth(Map<String, dynamic> data) async {
-    final uid = data['user_id'] as String;
+    // The backend returns the profile nested under `user`; tolerate a flat
+    // shape too for backward compatibility.
+    final user = (data['user'] as Map<String, dynamic>?) ?? const {};
+    final uid = (data['user_id'] ?? user['id']) as String;
     final token = data['access_token'] as String;
-    final email = (data['email'] as String?) ?? userEmail ?? '';
+    final email =
+        (data['email'] ?? user['email']) as String? ?? userEmail ?? '';
+    final name = (data['name'] ?? user['name']) as String? ?? userName;
     accessToken = token;
     userId = uid;
     userEmail = email;
+    userName = name;
     _api.setToken(token);
     await _storage.write(key: 'access_token', value: token);
     await _storage.write(key: 'user_id', value: uid);
     await _storage.write(key: 'user_email', value: email);
+    if (name != null) await _storage.write(key: 'user_name', value: name);
 
     // Restore household from prefs if it exists
     final prefs = await SharedPreferences.getInstance();

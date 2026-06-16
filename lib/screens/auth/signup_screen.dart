@@ -12,6 +12,7 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
+  final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
@@ -20,6 +21,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   void dispose() {
+    _nameCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
@@ -83,6 +85,20 @@ class _SignupScreenState extends State<SignupScreen> {
             ],
 
             // ── Fields ───────────────────────────────────────────────────────
+            TextField(
+              controller: _nameCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Name',
+                hintText: 'Your name',
+                prefixIcon: Icon(Icons.person_outline_rounded, size: 22),
+              ),
+              keyboardType: TextInputType.name,
+              textCapitalization: TextCapitalization.words,
+              autocorrect: false,
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+            ),
+            const SizedBox(height: 14),
             TextField(
               controller: _emailCtrl,
               decoration: const InputDecoration(
@@ -207,11 +223,12 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   void _createAccount(AppState state) {
+    final name = _nameCtrl.text.trim();
     final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
     final confirm = _confirmCtrl.text;
 
-    if (email.isEmpty || password.isEmpty) {
+    if (name.isEmpty || email.isEmpty || password.isEmpty) {
       setState(() => _localError = 'Please fill in all fields');
       return;
     }
@@ -225,6 +242,6 @@ class _SignupScreenState extends State<SignupScreen> {
     }
     setState(() => _localError = null);
     FocusScope.of(context).unfocus();
-    state.signup(email, password);
+    state.signup(name, email, password);
   }
 }
