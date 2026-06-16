@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/meal.dart';
 
 class ApiService {
-  static const _base = 'http://localhost:3001';
+  static const _base = 'https://mixed-plate-api.onrender.com';
   static const _timeout = Duration(seconds: 5);
 
   String? _token;
